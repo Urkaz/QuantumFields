@@ -1,0 +1,89 @@
+From da14ee7797a2db0d6bf13fe8391345999f574cc0 Mon Sep 17 00:00:00 2001
+From: FranCatness <fran@catnessgames.com>
+Date: Thu, 21 Sep 2023 14:27:25 +0200
+Subject: [PATCH] Allow defer events on UDynamicMesh::SetMesh
+
+---
+ .../GeometryScriptingCore/Private/MeshAssetFunctions.cpp  | 2 +-
+ .../Private/MeshBooleanFunctions.cpp                      | 2 +-
+ .../Runtime/GeometryFramework/Private/UDynamicMesh.cpp    | 8 ++++----
+ .../Runtime/GeometryFramework/Public/UDynamicMesh.h       | 4 ++--
+ 4 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/Engine/Plugins/Experimental/GeometryScripting/Source/GeometryScriptingCore/Private/MeshAssetFunctions.cpp b/Engine/Plugins/Experimental/GeometryScripting/Source/GeometryScriptingCore/Private/MeshAssetFunctions.cpp
+index a183c58e3d9a..57ee1f4080b3 100644
+--- a/Engine/Plugins/Experimental/GeometryScripting/Source/GeometryScriptingCore/Private/MeshAssetFunctions.cpp
++++ b/Engine/Plugins/Experimental/GeometryScripting/Source/GeometryScriptingCore/Private/MeshAssetFunctions.cpp
+@@ -103,7 +103,7 @@ static UDynamicMesh* CopyMeshFromStaticMesh_SourceData(
+ 	FMeshDescriptionToDynamicMesh Converter;
+ 	Converter.Convert(SourceMesh, NewMesh, AssetOptions.bRequestTangents);
+ 
+-	ToDynamicMesh->SetMesh(MoveTemp(NewMesh));
++	ToDynamicMesh->SetMesh(MoveTemp(NewMesh), true);
+ 
+ 	Outcome = EGeometryScriptOutcomePins::Success;
+ #else
+diff --git a/Engine/Plugins/Experimental/GeometryScripting/Source/GeometryScriptingCore/Private/MeshBooleanFunctions.cpp b/Engine/Plugins/Experimental/GeometryScripting/Source/GeometryScriptingCore/Private/MeshBooleanFunctions.cpp
+index 09e3ba44030c..ac0c86b763f9 100644
+--- a/Engine/Plugins/Experimental/GeometryScripting/Source/GeometryScriptingCore/Private/MeshBooleanFunctions.cpp
++++ b/Engine/Plugins/Experimental/GeometryScripting/Source/GeometryScriptingCore/Private/MeshBooleanFunctions.cpp
+@@ -106,7 +106,7 @@ UDynamicMesh* UGeometryScriptLibrary_MeshBooleanFunctions::ApplyMeshBoolean(
+ 		}
+ 	}
+ 
+-	TargetMesh->SetMesh(MoveTemp(NewResultMesh));
++	TargetMesh->SetMesh(MoveTemp(NewResultMesh), true);
+ 
+ 	return TargetMesh;
+ }
+diff --git a/Engine/Source/Runtime/GeometryFramework/Private/UDynamicMesh.cpp b/Engine/Source/Runtime/GeometryFramework/Private/UDynamicMesh.cpp
+index 0c460b2de705..d3cca575c70c 100644
+--- a/Engine/Source/Runtime/GeometryFramework/Private/UDynamicMesh.cpp
++++ b/Engine/Source/Runtime/GeometryFramework/Private/UDynamicMesh.cpp
+@@ -97,22 +97,22 @@ int32 UDynamicMesh::GetTriangleCount() const
+ }
+ 
+ 
+-void UDynamicMesh::SetMesh(const UE::Geometry::FDynamicMesh3& MoveMesh)
++void UDynamicMesh::SetMesh(const UE::Geometry::FDynamicMesh3& MoveMesh, bool bDeferChangeEvents)
+ {
+ 	FDynamicMeshChangeInfo ChangeInfo;
+ 	ChangeInfo.Type = EDynamicMeshChangeType::GeneralEdit;
+ 	EditMeshInternal([&](FDynamicMesh3& EditMesh) {
+ 		EditMesh = MoveMesh;
+-	}, ChangeInfo);
++	}, ChangeInfo, bDeferChangeEvents);
+ }
+ 
+-void UDynamicMesh::SetMesh(UE::Geometry::FDynamicMesh3&& MoveMesh)
++void UDynamicMesh::SetMesh(UE::Geometry::FDynamicMesh3&& MoveMesh, bool bDeferChangeEvents)
+ {
+ 	FDynamicMeshChangeInfo ChangeInfo;
+ 	ChangeInfo.Type = EDynamicMeshChangeType::GeneralEdit;
+ 	EditMeshInternal([&](FDynamicMesh3& EditMesh) {
+ 		EditMesh = MoveTemp(MoveMesh);
+-	}, ChangeInfo);
++	}, ChangeInfo, bDeferChangeEvents);
+ }
+ 
+ void UDynamicMesh::ProcessMesh(TFunctionRef<void(const UE::Geometry::FDynamicMesh3&)> ProcessFunc) const
+diff --git a/Engine/Source/Runtime/GeometryFramework/Public/UDynamicMesh.h b/Engine/Source/Runtime/GeometryFramework/Public/UDynamicMesh.h
+index ce41bf7632aa..5d6b451a4797 100644
+--- a/Engine/Source/Runtime/GeometryFramework/Public/UDynamicMesh.h
++++ b/Engine/Source/Runtime/GeometryFramework/Public/UDynamicMesh.h
+@@ -165,10 +165,10 @@ public:
+ 
+ 
+ 	/** Replace the internal mesh with a copy of MoveMesh */
+-	GEOMETRYFRAMEWORK_API void SetMesh(const UE::Geometry::FDynamicMesh3& MoveMesh);
++	GEOMETRYFRAMEWORK_API void SetMesh(const UE::Geometry::FDynamicMesh3& MoveMesh, bool bDeferChangeEvents = false);
+ 
+ 	/** Replace the internal mesh with the data in MoveMesh */
+-	GEOMETRYFRAMEWORK_API void SetMesh(UE::Geometry::FDynamicMesh3&& MoveMesh);
++	GEOMETRYFRAMEWORK_API void SetMesh(UE::Geometry::FDynamicMesh3&& MoveMesh, bool bDeferChangeEvents = false);
+ 
+ 	/**
+ 	 * Apply ProcessFunc to the internal Mesh
+-- 
+2.37.1.windows.1
+
